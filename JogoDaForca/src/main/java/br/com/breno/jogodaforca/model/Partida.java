@@ -11,26 +11,32 @@ import java.util.Date;
  * @author breno
  */
 public class Partida {
-    private String jogadorId;
+    private String jogadorNome;
     private int pontuacao;
+    private int palavrasVencidas;
+    private int dicasUsadas;
     private String data;
 
-    public Partida(String jogadorId, int pontuacao) {
-        this.jogadorId = jogadorId;
+    public Partida(String jogadorNome, int pontuacao, int palavrasVencidas, int dicasUsadas) {
+        this.jogadorNome = jogadorNome;
         this.pontuacao = pontuacao;
+        this.palavrasVencidas = palavrasVencidas;
+        this.dicasUsadas = dicasUsadas;
         this.data = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
     }
     
     
 
-    public Partida(String jogadorId, int pontuacao, String data) {
-        this.jogadorId = jogadorId;
+    public Partida(String jogadorNome, int pontuacao, int palavrasVencidas, int dicasUsadas, String data) {
+        this.jogadorNome = jogadorNome;
         this.pontuacao = pontuacao;
+        this.palavrasVencidas = palavrasVencidas;
+        this.dicasUsadas = dicasUsadas;
         this.data = data;
     }
 
-    public String getJogadorId() {
-        return jogadorId;
+    public String getJogadorNome() {
+        return jogadorNome;
     }
 
     public int getPontuacao() {
@@ -39,6 +45,14 @@ public class Partida {
 
     public String getData() {
         return data;
+    }
+
+    public int getPalavrasVencidas() {
+        return palavrasVencidas;
+    }
+
+    public int getDicasUsadas() {
+        return dicasUsadas;
     }
 
 }

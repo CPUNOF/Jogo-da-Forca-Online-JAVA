@@ -5,6 +5,7 @@
 package br.com.breno.jogodaforca.view;
 
 import br.com.breno.jogodaforca.dao.MongoConnection;
+import br.com.breno.jogodaforca.service.MusicPlayerService;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import javax.swing.JOptionPane;
@@ -20,7 +21,9 @@ public class MainFrame extends javax.swing.JFrame {
 
     public MainFrame() {
         initComponents();
-
+        
+        MusicPlayerService.getInstance();
+        
         this.setResizable(true);
         this.setPreferredSize(new java.awt.Dimension(800, 600));
         // centraliza o janelas no meio 

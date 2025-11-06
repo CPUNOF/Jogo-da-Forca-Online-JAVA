@@ -100,6 +100,15 @@ public class GameService {
         }
     }
     
+    public Set<Character> getLetrasCorretas() {
+        return letrasCorretas;
+    }
+
+    public Set<Character> getLetrasErradas() {
+        return letrasErradas;
+    }
+    
+    
     public boolean perdeu() {
         return getNumeroErros() >= MAX_ERROS;
     }

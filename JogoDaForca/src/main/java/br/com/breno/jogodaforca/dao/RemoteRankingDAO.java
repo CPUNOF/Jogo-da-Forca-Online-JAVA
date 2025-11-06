@@ -16,6 +16,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.mongodb.client.model.Sorts.descending;
+import static com.mongodb.client.model.Sorts.ascending;
+import static com.mongodb.client.model.Sorts.orderBy;
 
 /**
  *
@@ -45,15 +47,18 @@ public class RemoteRankingDAO {
         }
         
         Document doc = new Document()
-                .append("Jogador", partida.getJogadorId())
-                .append("pontuacao", partida.getPontuacao())
-                .append("data", partida.getData());
+                .append("Jogador", partida.getJogadorNome())
+                .append("Pontuacao", partida.getPontuacao())
+                .append("PalavrasVencidas", partida.getPalavrasVencidas())
+                .append("DicasUsadas", partida.getDicasUsadas())
+                .append("Data", partida.getData());
+        
         colecao.insertOne(doc);
         Logger.getLogger(RemoteRankingDAO.class.getName())
                 .info("Partida salva no MongoDB!");
     }
     
-    public List<Partida> top10(){
+    public List<Partida> top25(){
         List<Partida> lista = new ArrayList();
         
         if(colecao == null){
@@ -63,15 +68,21 @@ public class RemoteRankingDAO {
         }
         
         try (MongoCursor<Document> cursor = colecao.find()
-                .sort(descending("pontuacao"))
-                .limit(10)
+                .sort(orderBy(
+                    descending("Pontuacao"),        
+                    descending("PalavrasVencidas"), 
+                    ascending("DicasUsadas")        
+                ))
+                .limit(25)
                 .iterator()){
             while(cursor.hasNext()){
                 Document doc = cursor.next();
                 Partida p = new Partida(
-                        doc.getString("jogadorId"),
-                        doc.getInteger("pontuacao"),
-                        doc.getString("data")
+                        doc.getString("Jogador"),
+                        doc.getInteger("Pontuacao"),
+                        doc.getInteger("PalavrasVencidas", 0),
+                        doc.getInteger("DicasUsadas", 0),
+                        doc.getString("Data")
                 );
                 lista.add(p);
             }

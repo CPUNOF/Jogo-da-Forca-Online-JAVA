@@ -102,16 +102,28 @@ public class MenuPanel extends javax.swing.JPanel {
     private void btnIniciarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnIniciarActionPerformed
         MainFrame framePai = (MainFrame) javax.swing.SwingUtilities.getWindowAncestor(this);
         framePai.mostrarTela("GAME");
+        
+        framePai.setPreferredSize(new java.awt.Dimension(1250, 800));
+        framePai.setSize(new java.awt.Dimension(1250, 800));
+        framePai.setLocationRelativeTo(null);
     }//GEN-LAST:event_btnIniciarActionPerformed
 
     private void btnRankingActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRankingActionPerformed
         MainFrame framePai = (MainFrame) javax.swing.SwingUtilities.getWindowAncestor(this);
         framePai.mostrarTela("RANKING");
+        
+        framePai.setPreferredSize(new java.awt.Dimension(800, 600));
+        framePai.setSize(new java.awt.Dimension(800, 600));
+        framePai.setLocationRelativeTo(null);
     }//GEN-LAST:event_btnRankingActionPerformed
 
     private void btnConfiguracoesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnConfiguracoesActionPerformed
         MainFrame framePai = (MainFrame) javax.swing.SwingUtilities.getWindowAncestor(this);
         framePai.mostrarTela("CONFIG");
+        
+        framePai.setPreferredSize(new java.awt.Dimension(800, 600));
+        framePai.setSize(new java.awt.Dimension(800, 600));
+        framePai.setLocationRelativeTo(null);
     }//GEN-LAST:event_btnConfiguracoesActionPerformed
 
 

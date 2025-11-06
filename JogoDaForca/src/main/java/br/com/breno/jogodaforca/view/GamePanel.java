@@ -7,6 +7,7 @@ package br.com.breno.jogodaforca.view;
 import br.com.breno.jogodaforca.dao.RemoteRankingDAO;
 import br.com.breno.jogodaforca.model.Partida;
 import br.com.breno.jogodaforca.service.GameService;
+import br.com.breno.jogodaforca.service.MusicPlayerService;
 import br.com.breno.jogodaforca.view.HangmanCanvas;
 import java.awt.event.ComponentEvent;
 import javax.swing.JOptionPane;
@@ -20,13 +21,23 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
     private final GameService gameService;
     private final HangmanCanvas canvas;
     private javax.swing.Timer gameTimer;
-    
+
     private int tempoRestante;
     private static final int TEMPO_LIMITE_SEGUNDOS = 60;
-    
+
     private int pontuacaoTotalPartida;
     private final RemoteRankingDAO rankingDAO;
     private String nomeJogador = "Convidado";
+    
+    private int palavrasVencidasPartida;
+    private int dicasUsadasPartida;
+    
+    
+
+
+    
+    //teclado
+    private final java.util.Map<Character, javax.swing.JButton> botoesTeclado;
 
     public GamePanel() {
 
@@ -35,15 +46,43 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
         this.canvas = new HangmanCanvas();
         this.rankingDAO = new RemoteRankingDAO();
 
+        this.botoesTeclado = new java.util.HashMap<>();
+
         initComponents();
 
+        criarTecladoVirtual();
+        
         panelForca.setLayout(new java.awt.BorderLayout());
         panelForca.add(canvas, java.awt.BorderLayout.CENTER);
-        btnTentar.addActionListener(e -> tentarLetra());
-        txtLetra.addActionListener(e -> tentarLetra());
+        btnTentar.addActionListener(e -> tentarLetraPeloTxt()); 
+        txtLetra.addActionListener(e -> tentarLetraPeloTxt());
         btnDica.addActionListener(e -> pedirDica());
         btnDesistir.addActionListener(e -> desistir());
-
+        
+        //music play
+        MusicPlayerService player = MusicPlayerService.getInstance();
+        btnMusicaPlayPause.addActionListener(e -> player.playPause());
+        btnMusicaProxima.addActionListener(e -> player.proximaMusica());
+        btnMusicaAnterior.addActionListener(e -> player.musicaAnterior());
+        sliderVolume.setValue(100); 
+        sliderVolume.addChangeListener(e -> {
+            double volume = sliderVolume.getValue() / 100.0;
+            player.setVolume(volume);
+        });
+        player.getProgressoAtualProperty().addListener((obs, oldVal, newVal) -> {
+            lblNomeMusica.setText(player.getNomeMusicaAtual());
+            sliderProgressoMusica.setValue((int)(newVal.doubleValue() * 100));
+        });
+        sliderProgressoMusica.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                // (Precisamos calcular o clique corretamente)
+                java.awt.Point p = evt.getPoint();
+                double percent = p.x / (double) sliderProgressoMusica.getWidth();
+                player.setProgresso(percent);
+            }
+        });
+        this.addComponentListener(this);
     }
 
     /**
@@ -59,11 +98,22 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
         panelInfo = new javax.swing.JPanel();
         lblTimer = new javax.swing.JLabel();
         lblCategoria = new javax.swing.JLabel();
+        jPanel1 = new javax.swing.JPanel();
         panelForca = new javax.swing.JPanel();
+        panelMusica = new javax.swing.JPanel();
+        panelMusicaControles = new javax.swing.JPanel();
+        btnMusicaAnterior = new javax.swing.JButton();
+        btnMusicaPlayPause = new javax.swing.JButton();
+        btnMusicaProxima = new javax.swing.JButton();
+        sliderVolume = new javax.swing.JSlider();
+        panelMusicaInfo = new javax.swing.JPanel();
+        lblNomeMusica = new javax.swing.JLabel();
+        sliderProgressoMusica = new javax.swing.JSlider();
         panelControles = new javax.swing.JPanel();
         panelLabels = new javax.swing.JPanel();
         lblPalavra = new javax.swing.JLabel();
         lblErros = new javax.swing.JLabel();
+        panelTeclado = new javax.swing.JPanel();
         panelBotoes = new javax.swing.JPanel();
         txtLetra = new javax.swing.JTextField();
         btnTentar = new javax.swing.JButton();
@@ -73,17 +123,22 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
         btnVoltarMenu = new javax.swing.JButton();
 
         setMinimumSize(new java.awt.Dimension(800, 900));
-        setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.LINE_AXIS));
+        setLayout(new java.awt.GridLayout(1, 2));
 
         panelInfo.setBorder(javax.swing.BorderFactory.createEtchedBorder());
-        panelInfo.setLayout(new java.awt.GridBagLayout());
+        panelInfo.setMaximumSize(new java.awt.Dimension(1200, 600));
+        panelInfo.setMinimumSize(new java.awt.Dimension(1200, 600));
+        java.awt.GridBagLayout panelInfoLayout = new java.awt.GridBagLayout();
+        panelInfoLayout.columnWidths = new int[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        panelInfoLayout.rowHeights = new int[] {0, 4, 0, 4, 0, 4, 0};
+        panelInfo.setLayout(panelInfoLayout);
 
         lblTimer.setFont(new java.awt.Font("Arial", 1, 18)); // NOI18N
         lblTimer.setText("Tempo: 60");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 0;
-        gridBagConstraints.gridheight = 2;
+        gridBagConstraints.gridheight = 3;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(8, 20, 0, 0);
         panelInfo.add(lblTimer, gridBagConstraints);
@@ -91,15 +146,23 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
         lblCategoria.setFont(new java.awt.Font("Arial", 0, 18)); // NOI18N
         lblCategoria.setText("Categoria: -----");
         gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridx = 2;
         gridBagConstraints.gridy = 0;
-        gridBagConstraints.gridheight = 2;
+        gridBagConstraints.gridheight = 3;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(8, 18, 0, 0);
         panelInfo.add(lblCategoria, gridBagConstraints);
 
+        jPanel1.setBorder(javax.swing.BorderFactory.createEtchedBorder());
+        jPanel1.setMinimumSize(new java.awt.Dimension(30, 30));
+        jPanel1.setName(""); // NOI18N
+        jPanel1.setPreferredSize(new java.awt.Dimension(300, 300));
+        jPanel1.setLayout(new java.awt.GridLayout(2, 0, 20, 0));
+
         panelForca.setBackground(new java.awt.Color(255, 255, 255));
-        panelForca.setBorder(javax.swing.BorderFactory.createEtchedBorder());
+        panelForca.setBorder(javax.swing.BorderFactory.createTitledBorder("Forca"));
+        panelForca.setMinimumSize(new java.awt.Dimension(100, 50));
+        panelForca.setPreferredSize(new java.awt.Dimension(100, 30));
 
         javax.swing.GroupLayout panelForcaLayout = new javax.swing.GroupLayout(panelForca);
         panelForca.setLayout(panelForcaLayout);
@@ -109,23 +172,57 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
         );
         panelForcaLayout.setVerticalGroup(
             panelForcaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
+            .addGap(0, 287, Short.MAX_VALUE)
         );
+
+        jPanel1.add(panelForca);
+
+        panelMusica.setBackground(new java.awt.Color(255, 255, 255));
+        panelMusica.setBorder(javax.swing.BorderFactory.createTitledBorder("Player de Música"));
+        panelMusica.setMinimumSize(new java.awt.Dimension(100, 96));
+        panelMusica.setPreferredSize(new java.awt.Dimension(5, 23));
+        panelMusica.setLayout(new java.awt.BorderLayout());
+
+        btnMusicaAnterior.setText("<<");
+        panelMusicaControles.add(btnMusicaAnterior);
+
+        btnMusicaPlayPause.setText("|| / >");
+        panelMusicaControles.add(btnMusicaPlayPause);
+
+        btnMusicaProxima.setText(">>");
+        panelMusicaControles.add(btnMusicaProxima);
+
+        sliderVolume.setFont(new java.awt.Font("AniMe Vision - MB_EN", 0, 12)); // NOI18N
+        sliderVolume.setPreferredSize(new java.awt.Dimension(100, 20));
+        panelMusicaControles.add(sliderVolume);
+
+        panelMusica.add(panelMusicaControles, java.awt.BorderLayout.CENTER);
+
+        panelMusicaInfo.setLayout(new java.awt.GridLayout(2, 1));
+
+        lblNomeMusica.setText("Carregando música...");
+        panelMusicaInfo.add(lblNomeMusica);
+        panelMusicaInfo.add(sliderProgressoMusica);
+
+        panelMusica.add(panelMusicaInfo, java.awt.BorderLayout.NORTH);
+
+        jPanel1.add(panelMusica);
 
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 2;
-        gridBagConstraints.gridwidth = 3;
-        gridBagConstraints.ipadx = 564;
-        gridBagConstraints.ipady = 341;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(18, 55, 0, 0);
-        panelInfo.add(panelForca, gridBagConstraints);
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.gridwidth = 5;
+        gridBagConstraints.gridheight = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.ipadx = 520;
+        gridBagConstraints.ipady = 568;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        panelInfo.add(jPanel1, gridBagConstraints);
 
         panelControles.setBorder(javax.swing.BorderFactory.createEtchedBorder());
         panelControles.setMinimumSize(new java.awt.Dimension(30, 30));
         panelControles.setPreferredSize(new java.awt.Dimension(300, 300));
-        panelControles.setLayout(new java.awt.GridLayout(2, 1));
+        panelControles.setLayout(new java.awt.GridLayout(3, 0));
 
         panelLabels.setLayout(new java.awt.GridLayout(2, 1));
 
@@ -140,6 +237,10 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
         panelLabels.add(lblErros);
 
         panelControles.add(panelLabels);
+
+        panelTeclado.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        panelTeclado.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 3, 3));
+        panelControles.add(panelTeclado);
 
         panelBotoes.setPreferredSize(new java.awt.Dimension(400, 400));
         java.awt.FlowLayout flowLayout1 = new java.awt.FlowLayout();
@@ -171,30 +272,60 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
         panelControles.add(panelBotoes);
 
         gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 3;
-        gridBagConstraints.gridy = 2;
-        gridBagConstraints.gridwidth = 2;
-        gridBagConstraints.gridheight = 2;
+        gridBagConstraints.gridx = 8;
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.gridwidth = 3;
+        gridBagConstraints.gridheight = 3;
         gridBagConstraints.ipadx = 520;
         gridBagConstraints.ipady = 568;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.SOUTH;
         gridBagConstraints.insets = new java.awt.Insets(18, 6, 8, 2);
         panelInfo.add(panelControles, gridBagConstraints);
 
         btnVoltarMenu.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
         btnVoltarMenu.setText("Voltar ao Menu");
-        panelInfo.add(btnVoltarMenu, new java.awt.GridBagConstraints());
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 4;
+        gridBagConstraints.gridy = 0;
+        panelInfo.add(btnVoltarMenu, gridBagConstraints);
 
         add(panelInfo);
     }// </editor-fold>//GEN-END:initComponents
 
+    private void criarTecladoVirtual() {
+
+        panelTeclado.removeAll();
+        botoesTeclado.clear();
+
+        java.awt.Dimension btnTamanho = new java.awt.Dimension(45, 30);
+
+        for (char c = 'A'; c <= 'Z'; c++) {
+            final char letra = c;
+
+            //cria botoes
+            javax.swing.JButton botao = new javax.swing.JButton(String.valueOf(letra));
+            botao.setFont(new java.awt.Font("Arial", 1, 12));
+            botao.setPreferredSize(btnTamanho);
+            botao.setMargin(new java.awt.Insets(2, 2, 2, 2));
+
+            //ouvinte para tentar a letra
+            botao.addActionListener(e -> {
+                processarTentativa(letra);
+            });
+
+            panelTeclado.add(botao);
+            botoesTeclado.put(letra, botao);
+        }
+
+        panelTeclado.revalidate();
+        panelTeclado.repaint();
+
+    }
+
     private void iniciarNovoJogo() {
         gameService.iniciarNovoJogo();
 
-        txtLetra.setEnabled(true);
-        btnTentar.setEnabled(true);
-        btnDica.setEnabled(true);
-        btnDesistir.setEnabled(true);
+        habilitarControles();
         btnVoltarMenu.addActionListener(e -> voltarAoMenu());
 
         atualizarTela();
@@ -212,59 +343,96 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
 
     }
 
-    private void tentarLetra() {
+    private void habilitarControles() {
+        txtLetra.setEnabled(true);
+        btnTentar.setEnabled(true);
+        btnDica.setEnabled(true);
+        btnDesistir.setEnabled(true);
+
+        for (javax.swing.JButton botao : botoesTeclado.values()) {
+            botao.setEnabled(true);
+        }
+    }
+
+    private void desabilitarControles() {
+        txtLetra.setEnabled(false);
+        btnTentar.setEnabled(false);
+        btnDica.setEnabled(false);
+        btnDesistir.setEnabled(false);
+
+        for (javax.swing.JButton botao : botoesTeclado.values()) {
+            botao.setEnabled(false);
+        }
+    }
+
+    private void tentarLetraPeloTxt() {
         String texto = txtLetra.getText().trim();
         if (texto.isEmpty()) {
             return;
         }
         char letra = texto.toUpperCase().charAt(0);
 
+        txtLetra.setText("");
+        txtLetra.requestFocus();
+
+        processarTentativa(letra);
+    }
+
+    private void processarTentativa(char letra) {
+        
+        
+        
+        if (gameService.getLetrasCorretas().contains(letra)
+                || gameService.getLetrasErradas().contains(letra)) {
+
+            java.awt.Toolkit.getDefaultToolkit().beep();
+            return;
+        }
+
+        if (botoesTeclado != null && botoesTeclado.containsKey(letra)) {
+            botoesTeclado.get(letra).setEnabled(false);
+        }
+
         boolean acertou = gameService.tentarLetra(letra);
         atualizarTela();
+        
+        
+        
         if (acertou) {
             canvas.acionarAnimacaoAcerto();
         } else {
             canvas.setEtapa(gameService.getNumeroErros());
         }
-        txtLetra.setText("");
-        txtLetra.requestFocus();
 
         if (gameService.venceu()) {
-            // 1. Para o timer
             gameTimer.stop();
-            txtLetra.setEnabled(false);
-            btnTentar.setEnabled(false);
-            btnDica.setEnabled(false);
-
-            // 2. Calcula pontuação da rodada E SOMA no total
+            desabilitarControles();
+            
+            
             int tempo = this.tempoRestante;
             int pontuacaoRodada = gameService.getPontuacaoFinal(tempo);
-            this.pontuacaoTotalPartida += pontuacaoRodada; // Acumula!
-
-            // 3. Pergunta se o jogador quer continuar
+            this.pontuacaoTotalPartida += pontuacaoRodada;
+            
+            this.palavrasVencidasPartida++; // contador de partidas vencidas.
+            
             int resposta = JOptionPane.showConfirmDialog(this,
                     "🎉 Você venceu! 🎉\n\n"
                     + "Pontuação da Rodada: " + pontuacaoRodada + "\n"
                     + "PONTUAÇÃO TOTAL: " + this.pontuacaoTotalPartida + "\n\n"
                     + "Deseja continuar jogando a próxima palavra?",
                     "Vitória!",
-                    JOptionPane.YES_NO_OPTION, // Botões "Sim" e "Não"
+                    JOptionPane.YES_NO_OPTION,
                     JOptionPane.QUESTION_MESSAGE);
 
-            // 4. Decide o que fazer
             if (resposta == JOptionPane.YES_OPTION) {
-                // Se "Sim": Inicia a próxima rodada
                 iniciarNovoJogo();
             } else {
                 finalizarPartida("Você decidiu parar.", "Partida Finalizada");
             }
-        } else if (gameService.perdeu()) {
 
-            canvas.setEtapa(gameService.getNumeroErros());
+        } else if (gameService.perdeu()) {
             gameTimer.stop();
-            txtLetra.setEnabled(false);
-            btnTentar.setEnabled(false);
-            btnDica.setEnabled(false);
+            desabilitarControles();
 
             String msg = "Você perdeu! (Muitos Erros) 💀\nA palavra era: " + gameService.getPalavraAtual().getTexto();
             finalizarPartida(msg, "Game Over!");
@@ -273,6 +441,9 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
 
     private void pedirDica() {
         String dica = gameService.usarDica();
+        
+        this.dicasUsadasPartida++;//contador de dicas usadas
+        
         JOptionPane.showMessageDialog(this,
                 "Dica ai para vc meu nobre " + dica,
                 "Dica",
@@ -290,10 +461,7 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
 
             gameTimer.stop();
 
-            txtLetra.setEnabled(false);
-            btnTentar.setEnabled(false);
-            btnDica.setEnabled(false);
-            btnDesistir.setEnabled(false);
+            desabilitarControles();
 
             // Mostra a mensagem de Game Over
             String msg = "Que pena! A palavra era: " + gameService.getPalavraAtual().getTexto();
@@ -302,27 +470,18 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
     }
 
     private void voltarAoMenu() {
-        int resposta = JOptionPane.showConfirmDialog(this,
-                "Tem Certaza que vai desistir novamente no meio do caminho ? "
-                + " Todo o progresso nesta rodada será perdido.",
-                "Voltar oa Menu? ",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE);
-
-        if (resposta == JOptionPane.YES_OPTION) {
-
             MainFrame framePai = (MainFrame) javax.swing.SwingUtilities.getWindowAncestor(this);
             framePai.mostrarTela("MENU");
-        }
+            
+            framePai.pack();
+            framePai.setLocationRelativeTo(null);
     }
 
     private void derrotaPorTempo() {
         if (gameTimer != null) {
             gameTimer.stop();
         }
-        txtLetra.setEnabled(false);
-        btnTentar.setEnabled(false);
-        btnDica.setEnabled(false);
+        desabilitarControles();
 
         String msg = "O tempo acabou! Você perdeu! 💀\nA palavra era: " + gameService.getPalavraAtual().getTexto();
         finalizarPartida(msg, "Game Over!");
@@ -353,7 +512,10 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
         String nome = (String) JOptionPane.showInputDialog(
                 this,
                 "Fim de jogo!\n" + mensagemFinal + "\n\n"
-                + "Sua pontuação total foi: " + this.pontuacaoTotalPartida + "\n\n"
+                + "--- SUAS ESTATÍSTICAS ---\n"
+                + "Pontuação Total: " + this.pontuacaoTotalPartida + "\n"
+                + "Palavras Vencidas: " + this.palavrasVencidasPartida + "\n"
+                + "Dicas Usadas: " + this.dicasUsadasPartida + "\n\n"
                 + "Digite seu nome para o ranking:",
                 titulo,
                 JOptionPane.INFORMATION_MESSAGE,
@@ -365,7 +527,12 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
         if (nome != null && !nome.isBlank()) {
             this.nomeJogador = nome;
 
-            Partida partida = new Partida(this.nomeJogador, this.pontuacaoTotalPartida);
+            Partida partida = new Partida(
+                    this.nomeJogador, 
+                    this.pontuacaoTotalPartida, 
+                    this.palavrasVencidasPartida, 
+                    this.dicasUsadasPartida
+            );
 
             try {
                 rankingDAO.salvarPartida(partida);
@@ -389,11 +556,16 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnDesistir;
     private javax.swing.JButton btnDica;
+    private javax.swing.JButton btnMusicaAnterior;
+    private javax.swing.JButton btnMusicaPlayPause;
+    private javax.swing.JButton btnMusicaProxima;
     private javax.swing.JButton btnTentar;
     private javax.swing.JButton btnVoltarMenu;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JLabel lblCategoria;
     private javax.swing.JLabel lblErros;
+    private javax.swing.JLabel lblNomeMusica;
     private javax.swing.JLabel lblPalavra;
     private javax.swing.JLabel lblTimer;
     private javax.swing.JPanel panelBotoes;
@@ -401,23 +573,30 @@ public class GamePanel extends javax.swing.JPanel implements java.awt.event.Comp
     private javax.swing.JPanel panelForca;
     private javax.swing.JPanel panelInfo;
     private javax.swing.JPanel panelLabels;
+    private javax.swing.JPanel panelMusica;
+    private javax.swing.JPanel panelMusicaControles;
+    private javax.swing.JPanel panelMusicaInfo;
+    private javax.swing.JPanel panelTeclado;
+    private javax.swing.JSlider sliderProgressoMusica;
+    private javax.swing.JSlider sliderVolume;
     private javax.swing.JTextField txtLetra;
     // End of variables declaration//GEN-END:variables
 
     @Override
-    public void componentResized(ComponentEvent e) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    public void componentResized(ComponentEvent e) {   
     }
 
     @Override
     public void componentMoved(ComponentEvent e) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 
     @Override
     public void componentShown(ComponentEvent e) {
 
         this.pontuacaoTotalPartida = 0;
+        
+        this.dicasUsadasPartida = 0;
+        this.palavrasVencidasPartida = 0;
 
         iniciarNovoJogo();
 
